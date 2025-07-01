@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LevinBot: An Interactive Simulation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chosen Palette: "Bio-Digital Genesis" (Custom) -->
+    <!-- Application Structure Plan: The SPA is designed as an interactive "virtual petri dish" or lab simulation. A large central canvas displays the LevinBot agents, while a side panel contains controls and real-time data readouts. This dashboard layout is chosen to make the abstract concepts of collective intelligence, foraging, and coherence tangible and directly manipulable. The user can actively experiment with the system, which is more effective for understanding a dynamic concept than a static page. -->
+    <!-- Visualization & Content Choices: 1. The Simulation: Goal: Organize/Relate/Change. Viz: Custom JS/Canvas animation of flocking agents. Justification: This is the only way to effectively visualize the core concepts of emergent collective behavior and goal-directed foraging without SVG/Mermaid. 2. Performance Chart: Goal: Change. Viz: Chart.js Line Chart. Justification: Provides clear, quantitative feedback on how the user's manipulation of the "Time Coefficient" affects the bots' foraging efficiency over time. 3. Conceptual Panels: Goal: Inform. Viz: Clickable tabs showing detailed text. Justification: Manages cognitive load by keeping detailed explanations accessible but out of the way of the main interactive elements. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            color: #1c1e21;
+        }
+        .header-gradient {
+            background: linear-gradient(90deg, #1d4ed8, #2563eb);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e2e8f0;
+        }
+        .btn-primary {
+            background-color: #2563eb;
+            color: white;
+            transition: all 0.2s ease-in-out;
+        }
+        .btn-primary:hover {
+            background-color: #1d4ed8;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+        }
+        .btn-secondary {
+            background-color: #e2e8f0;
+            color: #475569;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .btn-secondary:hover {
+            background-color: #cbd5e1;
+        }
+        .chart-container {
+            position: relative;
+            height: 200px;
+            width: 100%;
+        }
+        .tab.active {
+            border-color: #2563eb;
+            color: #2563eb;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto p-4 md:p-8">
+
+        <header class="text-center mb-12">
+            <h1 class="text-4xl md:text-6xl font-extrabold header-gradient mb-4">The LevinBot Simulation Lab</h1>
+            <p class="text-xl text-gray-600 max-w-3xl mx-auto">An interactive model of biologically-inspired, multi-scale collective intelligence operating as adaptive foragers within the Xenial Quantum Economy framework.</p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Simulation Canvas -->
+            <div class="lg:col-span-2 card p-2">
+                <canvas id="simulationCanvas" class="w-full h-[60vh] md:h-[75vh] rounded-lg bg-gray-800"></canvas>
+            </div>
+
+            <!-- Controls and Data Panel -->
+            <div class="lg:col-span-1 flex flex-col gap-6">
+                <div class="card p-6">
+                    <h2 class="text-2xl font-bold mb-4">Simulation Controls</h2>
+                    <div class="space-y-4">
+                        <button id="deployBtn" class="w-full btn-primary font-semibold py-2 rounded-lg">Deploy LevinBots</button>
+                        <button id="addFoodBtn" class="w-full btn-secondary font-semibold py-2 rounded-lg">Add Foraging Target</button>
+                        <button id="resetBtn" class="w-full btn-secondary font-semibold py-2 rounded-lg">Reset Simulation</button>
+                    </div>
+                    <div class="mt-6">
+                        <label for="tcSlider" class="block font-semibold mb-2">System Coherence (Time Coefficient)</label>
+                        <p class="text-sm text-gray-500 mb-2">High coherence enables effective collective action. Low coherence leads to disorganized, individual behavior.</p>
+                        <input id="tcSlider" type="range" min="0" max="100" value="100" class="w-full accent-blue-600">
+                    </div>
+                </div>
+
+                <div class="card p-6">
+                    <h2 class="text-2xl font-bold mb-4">Data Readout</h2>
+                    <div class="grid grid-cols-2 gap-4 text-center">
+                        <div>
+                            <p class="text-gray-500 text-sm">Active Bots</p>
+                            <p id="botsCount" class="text-2xl font-bold">0</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500 text-sm">Foraging Success</p>
+                            <p id="successRate" class="text-2xl font-bold">0%</p>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <p class="text-center font-semibold mb-2">Efficiency Over Time</p>
+                        <div class="chart-container">
+                            <canvas id="efficiencyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <section class="card mt-16 p-8">
+            <h2 class="text-3xl font-bold text-center mb-8">Conceptual Bridge: From Simulation to XQE</h2>
+            <p class="text-gray-600 text-center max-w-3xl mx-auto mb-8">The simulation demonstrates key principles of the Xenial Quantum Economy. Click a concept to understand how it maps to what you're observing.</p>
+            <div class="border-b border-gray-200">
+                <nav id="tabs" class="-mb-px flex justify-center space-x-8" aria-label="Tabs">
+                    <button data-target="panel-forager" class="tab active whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Adaptive Forager</button>
+                    <button data-target="panel-tc" class="tab whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Time Coefficient</button>
+                    <button data-target="panel-agency" class="tab whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Proof-of-Agency</button>
+                </nav>
+            </div>
+            <div id="tab-content" class="pt-8">
+                <div id="panel-forager">
+                    <h3 class="text-xl font-bold mb-2">The LevinBot as an Adaptive Forager</h3>
+                    <p class="text-gray-700">Each bot in the simulation represents a LevinBot—a self-organizing collective of biological cells. Its "foraging" is the act of navigating a problem space (the canvas) to achieve a goal (reaching the target). Its intelligence is not programmed top-down; it emerges from the simple rules of interaction between the bots, guided by the overall system coherence.</p>
+                </div>
+                <div id="panel-tc" class="hidden">
+                    <h3 class="text-xl font-bold mb-2">Time Coefficient (TC) as System Coherence</h3>
+                    <p class="text-gray-700">The "System Coherence" slider is a direct proxy for the Time Coefficient. A high TC creates a high-coherence environment where bots can effectively communicate and coordinate, leading to successful collective action. A low TC introduces "decoherence," causing the bots' collective intelligence to break down, making them unable to achieve their goal.</p>
+                </div>
+                <div id="panel-agency" class="hidden">
+                    <h3 class="text-xl font-bold mb-2">Proof-of-Agency & LIT Generation</h3>
+                    <p class="text-gray-700">Each successful foraging run—a bot reaching a target—is a verifiable "Proof-of-Agency." It's a demonstration of transforming potential into a meaningful, goal-directed outcome. In the full XQE framework, this successful action could "mine" or generate a Live Information Token (LIT), representing the value created by the coherent action of the forager.</p>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const canvas = document.getElementById('simulationCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const deployBtn = document.getElementById('deployBtn');
+    const addFoodBtn = document.getElementById('addFoodBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const tcSlider = document.getElementById('tcSlider');
+    const botsCountEl = document.getElementById('botsCount');
+    const successRateEl = document.getElementById('successRate');
+
+    let bots = [];
+    let food = [];
+    let animationFrameId;
+    let chart;
+    let history = [];
+    let totalFoodEaten = 0;
+    let totalFoodSpawned = 0;
+
+    const BOT_COUNT = 50;
+    const BOT_RADIUS = 5;
+    const FOOD_RADIUS = 7;
+
+    class Bot {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.vx = (Math.random() - 0.5) * 2;
+            this.vy = (Math.random() - 0.5) * 2;
+            this.radius = BOT_RADIUS;
+            this.color = '#2563eb';
+            this.maxSpeed = 2;
+            this.maxForce = 0.05;
+        }
+
+        flock(bots, food, coherence) {
+            let alignment = this.align(bots);
+            let cohesion = this.cohesion(bots);
+            let separation = this.separation(bots);
+            let seek = this.seek(food);
+
+            const chaos = 1 - (coherence / 100);
+
+            alignment.x *= (1.5 * (1 - chaos));
+            alignment.y *= (1.5 * (1 - chaos));
+            cohesion.x *= (1.0 * (1 - chaos));
+            cohesion.y *= (1.0 * (1 - chaos));
+            separation.x *= (2.0 * (1 - chaos/2));
+            separation.y *= (2.0 * (1 - chaos/2));
+            seek.x *= 3.0;
+            seek.y *= 3.0;
+            
+            this.vx += alignment.x + cohesion.x + separation.x + seek.x;
+            this.vy += alignment.y + cohesion.y + separation.y + seek.y;
+            
+            // Add chaos
+            this.vx += (Math.random() - 0.5) * chaos;
+            this.vy += (Math.random() - 0.5) * chaos;
+
+            const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+            if (speed > this.maxSpeed) {
+                this.vx = (this.vx / speed) * this.maxSpeed;
+                this.vy = (this.vy / speed) * this.maxSpeed;
+            }
+        }
+
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+
+            if (this.x > canvas.width + this.radius) this.x = -this.radius;
+            if (this.x < -this.radius) this.x = canvas.width + this.radius;
+            if (this.y > canvas.height + this.radius) this.y = -this.radius;
+            if (this.y < -this.radius) this.y = canvas.height + this.radius;
+        }
+
+        draw() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+        }
+        
+        seek(targets) {
+            let closestDist = Infinity;
+            let closestTarget = null;
+            for (let target of targets) {
+                let d = Math.hypot(target.x - this.x, target.y - this.y);
+                if (d < closestDist) {
+                    closestDist = d;
+                    closestTarget = target;
+                }
+            }
+
+            if (closestTarget) {
+                let desired = { x: closestTarget.x - this.x, y: closestTarget.y - this.y };
+                const d = Math.hypot(desired.x, desired.y);
+                desired.x = (desired.x / d) * this.maxSpeed;
+                desired.y = (desired.y / d) * this.maxSpeed;
+                let steer = { x: desired.x - this.vx, y: desired.y - this.vy };
+                const steerMag = Math.hypot(steer.x, steer.y);
+                if (steerMag > this.maxForce) {
+                    steer.x = (steer.x / steerMag) * this.maxForce;
+                    steer.y = (steer.y / steerMag) * this.maxForce;
+                }
+                return steer;
+            }
+            return { x: 0, y: 0 };
+        }
+
+        align(bots) {
+            let perceptionRadius = 50;
+            let steering = { x: 0, y: 0 };
+            let total = 0;
+            for (let other of bots) {
+                let d = Math.hypot(this.x - other.x, this.y - other.y);
+                if (other !== this && d < perceptionRadius) {
+                    steering.x += other.vx;
+                    steering.y += other.vy;
+                    total++;
+                }
+            }
+            if (total > 0) {
+                steering.x /= total;
+                steering.y /= total;
+                const mag = Math.hypot(steering.x, steering.y);
+                steering.x = (steering.x / mag) * this.maxSpeed;
+                steering.y = (steering.y / mag) * this.maxSpeed;
+                steering.x -= this.vx;
+                steering.y -= this.vy;
+                const steerMag = Math.hypot(steering.x, steering.y);
+                if (steerMag > this.maxForce) {
+                    steering.x = (steering.x / steerMag) * this.maxForce;
+                    steering.y = (steering.y / steerMag) * this.maxForce;
+                }
+            }
+            return steering;
+        }
+
+        cohesion(bots) {
+            let perceptionRadius = 100;
+            let steering = { x: 0, y: 0 };
+            let total = 0;
+            for (let other of bots) {
+                let d = Math.hypot(this.x - other.x, this.y - other.y);
+                if (other !== this && d < perceptionRadius) {
+                    steering.x += other.x;
+                    steering.y += other.y;
+                    total++;
+                }
+            }
+            if (total > 0) {
+                steering.x /= total;
+                steering.y /= total;
+                steering.x -= this.x;
+                steering.y -= this.y;
+                const mag = Math.hypot(steering.x, steering.y);
+                steering.x = (steering.x / mag) * this.maxSpeed;
+                steering.y = (steering.y / mag) * this.maxSpeed;
+                steering.x -= this.vx;
+                steering.y -= this.vy;
+                const steerMag = Math.hypot(steering.x, steering.y);
+                if (steerMag > this.maxForce) {
+                    steering.x = (steering.x / steerMag) * this.maxForce;
+                    steering.y = (steering.y / steerMag) * this.maxForce;
+                }
+            }
+            return steering;
+        }
+
+        separation(bots) {
+            let perceptionRadius = 24;
+            let steering = { x: 0, y: 0 };
+            let total = 0;
+            for (let other of bots) {
+                let d = Math.hypot(this.x - other.x, this.y - other.y);
+                if (other !== this && d < perceptionRadius) {
+                    let diff = { x: this.x - other.x, y: this.y - other.y };
+                    diff.x /= (d * d);
+                    diff.y /= (d * d);
+                    steering.x += diff.x;
+                    steering.y += diff.y;
+                    total++;
+                }
+            }
+            if (total > 0) {
+                steering.x /= total;
+                steering.y /= total;
+                const mag = Math.hypot(steering.x, steering.y);
+                steering.x = (steering.x / mag) * this.maxSpeed;
+                steering.y = (steering.y / mag) * this.maxSpeed;
+                steering.x -= this.vx;
+                steering.y -= this.vy;
+                const steerMag = Math.hypot(steering.x, steering.y);
+                if (steerMag > this.maxForce) {
+                    steering.x = (steering.x / steerMag) * this.maxForce;
+                    steering.y = (steering.y / steerMag) * this.maxForce;
+                }
+            }
+            return steering;
+        }
+    }
+
+    function resizeCanvas() {
+        const dpr = window.devicePixelRatio || 1;
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
+        canvas.style.width = `${rect.width}px`;
+        canvas.style.height = `${rect.height}px`;
+    }
+
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        food.forEach(f => {
+            ctx.beginPath();
+            ctx.arc(f.x, f.y, FOOD_RADIUS, 0, Math.PI * 2);
+            ctx.fillStyle = '#4ade80';
+            ctx.fill();
+        });
+
+        bots.forEach(bot => {
+            bot.flock(bots, food, tcSlider.value);
+            bot.update();
+            bot.draw();
+        });
+
+        for (let i = bots.length - 1; i >= 0; i--) {
+            for (let j = food.length - 1; j >= 0; j--) {
+                const d = Math.hypot(bots[i].x - food[j].x, bots[i].y - food[j].y);
+                if (d < BOT_RADIUS + FOOD_RADIUS) {
+                    food.splice(j, 1);
+                    totalFoodEaten++;
+                }
+            }
+        }
+
+        animationFrameId = requestAnimationFrame(animate);
+    }
+
+    function updateStats() {
+        botsCountEl.textContent = bots.length;
+        const rate = totalFoodSpawned > 0 ? Math.round((totalFoodEaten / totalFoodSpawned) * 100) : 0;
+        successRateEl.textContent = `${rate}%`;
+        
+        history.push(rate);
+        if (history.length > 30) history.shift();
+        chart.data.labels = history.map((_, i) => i);
+        chart.data.datasets[0].data = history;
+        chart.update();
+    }
+
+    function setup() {
+        resizeCanvas();
+        deployBtn.addEventListener('click', () => {
+            bots = [];
+            for (let i = 0; i < BOT_COUNT; i++) {
+                bots.push(new Bot(Math.random() * canvas.offsetWidth, Math.random() * canvas.offsetHeight));
+            }
+        });
+        addFoodBtn.addEventListener('click', () => {
+            const foodItem = {
+                x: Math.random() * canvas.offsetWidth,
+                y: Math.random() * canvas.offsetHeight
+            };
+            food.push(foodItem);
+            totalFoodSpawned++;
+        });
+        resetBtn.addEventListener('click', () => {
+            bots = [];
+            food = [];
+            totalFoodEaten = 0;
+            totalFoodSpawned = 0;
+            history = [];
+        });
+
+        const chartCtx = document.getElementById('efficiencyChart').getContext('2d');
+        chart = new Chart(chartCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Success Rate (%)',
+                    data: [],
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, max: 100, ticks: { display: false } },
+                    x: { ticks: { display: false } }
+                },
+                plugins: { legend: { display: false } }
+            }
+        });
+
+        setInterval(updateStats, 1000);
+        animate();
+    }
+    
+    const tabs = document.querySelectorAll('.tab');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', (e) => {
+            tabs.forEach(t => t.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+            const targetId = e.currentTarget.dataset.target;
+            document.querySelectorAll('#tab-content > div').forEach(panel => {
+                panel.classList.toggle('hidden', panel.id !== targetId);
+            });
+        });
+    });
+
+    window.addEventListener('resize', resizeCanvas);
+    setup();
+});
+</script>
+</body>
+</html>
+
